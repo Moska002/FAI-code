@@ -6,18 +6,21 @@ def find_unit_clause(symbols, clauses, model):
     save_index = None
     for clause in clauses:
         i = 0
-        sat = False
         c_none = 0
-        while i < len(clause):
+        sat = False
+        while i < len(clause) and not sat:
             literal_index = symbols.index(clause[i].replace('!', ''))
             if model[literal_index] == None: 
                 save_index = i
                 c_none = c_none + 1
-            elif model[literal_index] == True: 
-                sat = True
+            else:
+                if('!' not in clause[i]):
+                    sat = sat or model[literal_index]
+                else:
+                    sat = sat or not model[literal_index]
             i = i + 1
         if c_none == 1 and not sat:
-                return clause[save_index]
+            return clause[save_index]
     return None
 
 def find_first(symbols, clauses, model):
