@@ -111,6 +111,13 @@ def parse_formula(array, disjunctions_lengths):
         i = i + 1
 
     return cnf
+
+def get_ordered_symbols(clauses):
+    '''
+    Return a list with all the symbols present in a set of clauses
+    '''
+    symbols = set([x.replace('!', '') for x in list(itertools.chain.from_iterable(clauses))])
+    return sorted(list(symbols), key=lambda x: re.sub('[^A-Za-z]+', '', x).lower())
         
 def generate_cnf(symbols, n_conj, max_disj, min_disj = 1):
     '''
@@ -135,29 +142,19 @@ def generate_cnf(symbols, n_conj, max_disj, min_disj = 1):
         cnf.append(sorted(literals, key=lambda x: re.sub('[^A-Za-z]+', '', x).lower()))
     return cnf
 
-def get_symbols(cnf):
-    '''
-    Extracts symbols in alphabetical order
-    from a CNF formula
-    '''
-    symbols = set([x.replace('!', '') for x in list(itertools.chain.from_iterable(cnf))])
-    symbols = sorted(list(symbols), key=lambda x: re.sub('[^A-Za-z]+', '', x).lower())
-
-    return symbols
-
-def unsatisfied_clauses(symbols, clauses, model):
+def elaborate_clauses(symbols, clauses, model):
     '''
     Search for unsatisfied clauses given a model.
-    If the model contains empty (None) values, the function returns
-    None if no unsatisfied clauses are found but some clauses where
-    not evaluated because of the empty values
+    If a clause contains empty (None) values, it is not returned
+    only if the known values make it satisfied
     '''
 
-    unsat = []
-    found_none = False
+    unsolvable = []
+    unsatisfied = []
     for clause in clauses:
         i = 0
         sat = False
+        still_solvable = False
         while i < len(clause) and not sat:
             literal = symbols.index(clause[i].replace('!', ''))
             if model[literal] != None:
@@ -166,13 +163,12 @@ def unsatisfied_clauses(symbols, clauses, model):
                 else:
                     sat = sat or not model[literal]
             else:
-                found_none = True
+                still_solvable = True
             i = i + 1
-        if not sat and not found_none:
-            unsat.append(clause)
-    
-    if len(unsat) > 0 or not found_none:
-        return unsat
-    else:
-        return None
-        
+        if not sat:
+            if still_solvable:
+                unsatisfied.append(clause)
+            else:
+                unsolvable.append(clause)
+
+    return (unsolvable, unsatisfied)
