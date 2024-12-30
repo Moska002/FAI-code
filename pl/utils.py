@@ -119,7 +119,7 @@ def get_ordered_symbols(clauses):
     symbols = set([x.replace('!', '') for x in list(itertools.chain.from_iterable(clauses))])
     return sorted(list(symbols), key=lambda x: re.sub('[^A-Za-z]+', '', x).lower())
         
-def generate_cnf(symbols, n_conj, max_disj, min_disj = 1):
+def generate_cnf(symbols, n_conj, max_disj, min_disj = 1, p_negative = 0.5):
     '''
     Creates a random formula in cnd form. 
     The formula is expressed in a matrix where:
@@ -135,7 +135,7 @@ def generate_cnf(symbols, n_conj, max_disj, min_disj = 1):
             replace=False)
         literals = []
         for x in range(len(choices)):
-            if np.random.random() <= 0.5:
+            if np.random.random() <= p_negative:
                 literals.append('!' + symbols[choices[x]])
             else:
                 literals.append('' + symbols[choices[x]])
