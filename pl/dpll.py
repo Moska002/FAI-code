@@ -1,6 +1,6 @@
 import numpy as np
 import networkx as nx
-from utils import unsatisfied_clauses
+from utils import elaborate_clauses, get_ordered_symbols
 
 def find_unit_clause(symbols, clauses, model):
     save_index = None
@@ -20,18 +20,17 @@ def find_unit_clause(symbols, clauses, model):
                 return clause[save_index]
     return None
 
-def find_first(model):
+def find_first(symbols, clauses, model):
     i = 0
+    list_of_symbols = get_ordered_symbols(clauses)
     while i < len(model):
-        if model[i] == None:
+        if model[i] == None and symbols[i] in list_of_symbols:
             return i
         i = i + 1
     return None
 
 def dpll_satisfailable(clauses):
-    symbols = set([x.replace('!', '') for x in list(itertools.chain.from_iterable(cnf))])
-    symbols = sorted(list(symbols), key=lambda x: re.sub('[^A-Za-z]+', '', x).lower())
-
+    symbols = get_ordered_symbols(clauses)
     model = [None] * len(symbols)
 
     search_tree = nx.Graph()
@@ -41,24 +40,23 @@ def dpll_satisfailable(clauses):
     return (dpll(clauses, symbols, model, search_tree, 0, labels), search_tree, labels)
 
 def dpll(clauses, symbols, model, search_tree, parent_node, labels):
-    unsat_clauses = unsatisfied_clauses(symbols, clauses, model)
+    false_clauses, unsat_clauses = elaborate_clauses(symbols, clauses, model)
     print(model)
-    if unsat_clauses != None:
-        if len(unsat_clauses) == 0:
-            id = search_tree.number_of_nodes()
-            search_tree.add_node(id)
-            search_tree.add_edge(parent_node, id)
-            labels[id] = 'SAT'
-            return True
-        else:
-            # I have at least one clause unsatisfailable with the current model
-            id = search_tree.number_of_nodes()
-            search_tree.add_node(id)
-            search_tree.add_edge(parent_node, id)
-            labels[id] = 'FAIL'
-            return False
+    if len(false_clauses) > 0:
+        # I have at least one clause unsatisfailable with the current model
+        id = search_tree.number_of_nodes()
+        search_tree.add_node(id)
+        search_tree.add_edge(parent_node, id)
+        labels[id] = 'FAIL'
+        return False
+    elif len(unsat_clauses) == 0:
+        id = search_tree.number_of_nodes()
+        search_tree.add_node(id)
+        search_tree.add_edge(parent_node, id)
+        labels[id] = 'SAT'
+        return True
     else:
-        lonely_literal = find_unit_clause(symbols, clauses, model)
+        lonely_literal = find_unit_clause(symbols, unsat_clauses, model)
         if lonely_literal != None:
             literal = lonely_literal
             new_model = [x for x in model]
@@ -74,9 +72,15 @@ def dpll(clauses, symbols, model, search_tree, parent_node, labels):
 
             return dpll(clauses, symbols, new_model, search_tree, id, labels)
         else:
-            # QUESTION: is the first symbol of the list or the first found on the clauses?
-            literal_index = find_first(model)
-            ans = None
+            # Search for the first unassigned literal in a unsatisfied clause
+            literal_index = find_first(symbols, unsat_clauses, model)
+            if literal_index == None:
+                # I found no literal
+                id = search_tree.number_of_nodes()
+                search_tree.add_node(id)
+                search_tree.add_edge(parent_node, id)
+                labels[id] = 'FAIL'
+                return False
             # Model setting the literal to true
             new_model_true = [x for x in model]
             new_model_true[literal_index] = True
@@ -105,8 +109,6 @@ def dpll(clauses, symbols, model, search_tree, parent_node, labels):
 
 if __name__ == '__main__':
     import argparse
-    import itertools
-    import re
     import matplotlib.pyplot as plt
     from networkx.drawing.nx_pydot import graphviz_layout
     from utils import generate_cnf, hierarchy_pos

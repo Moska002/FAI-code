@@ -1,5 +1,5 @@
 import numpy as np
-from utils import select_choice, unsatisfied_clauses
+from utils import select_choice, elaborate_clauses
 
 def maximize_satisfied(symbols, clauses, model, target_clause):
     best_literal = None
@@ -8,8 +8,10 @@ def maximize_satisfied(symbols, clauses, model, target_clause):
     for literal in target_clause:
         new_model = [x for x in model]
         new_model[symbols.index(literal.replace('!', ''))] = not model[symbols.index(literal.replace('!', ''))]
-        curr_sat = len(unsatisfied_clauses(symbols, clauses, new_model))
-        print(f"Literal {literal.replace('!', '')} leaves the model with {curr_sat} unsitisfied clauses")
+
+        unsat, _ = elaborate_clauses(symbols, clauses, new_model)
+        curr_sat = len(unsat)
+        print(f"Literal {literal.replace('!', '')} leaves the model with {curr_sat} unsatisfied clauses")
         if(curr_sat < min_unsat):
             min_unsat = curr_sat
             best_literal = literal.replace('!', '')
@@ -27,7 +29,7 @@ def walksat(symbols, clauses, choices, max_flips=1000, p = 0.5):
     print("Starting model: ", model)
     for _ in range(max_flips):
         input()
-        unsat_clauses = unsatisfied_clauses(symbols, clauses, model)
+        unsat_clauses, _ = elaborate_clauses(symbols, clauses, model)
         if len(unsat_clauses) == 0:
             return model
         (clause, _) = select_choice([(x, 1) for x in unsat_clauses], choices)
